@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+app/build/
+**/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild
+.cxx
+local.properties
+
+# Build artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Keystores / secrets
+*.jks
+*.keystore
+
+# Logs
+*.log
+
+# Room exported schemas ARE tracked intentionally (app/schemas) for migration history
