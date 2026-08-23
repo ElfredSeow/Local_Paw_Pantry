@@ -10,7 +10,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,7 +33,7 @@ fun UpcomingScreen(viewModel: MainViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Surface(color = FreshBlue, contentColor = Color.White) {
+        Surface(color = FreshBlue, contentColor = MaterialTheme.colorScheme.onPrimary) {
             Text(
                 text = "Expiring Soon Timeline",
                 fontSize = 24.sp,
@@ -53,7 +52,7 @@ fun UpcomingScreen(viewModel: MainViewModel) {
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                items(groupItems) { item ->
+                items(groupItems, key = { it.id }) { item ->
                     FoodItemCard(
                         item = item,
                         onDelete = { viewModel.deleteItem(item) },

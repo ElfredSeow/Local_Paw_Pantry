@@ -1,5 +1,8 @@
 package com.example.foodtracker.ui.components
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +11,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,6 +22,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,13 +42,15 @@ fun FoodItemCard(
 ) {
     val daysUntil = DateUtils.getDaysUntil(item.expiryDate)
     val status = getExpiryStatus(daysUntil)
+    val context = LocalContext.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -88,12 +100,12 @@ fun FoodItemCard(
 
                 Text(
                     text = "Expires: ${DateUtils.formatDate(item.expiryDate)}",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
                 Text(
                     text = item.category,
-                    color = Color.LightGray,
+                    color = MaterialTheme.colorScheme.outline,
                     fontSize = 12.sp
                 )
 
@@ -105,7 +117,22 @@ fun FoodItemCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = { /* Recipe Idea logic */ },
+                        onClick = {
+                            // Implicit web-search intent for this item's name - mirrors the
+                            // original JS prototype's
+                            // https://www.google.com/search?q=<name>+recipe link.
+                            try {
+                                val query = Uri.encode("${item.name} recipe")
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://www.google.com/search?q=$query")
+                                )
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                // No app can resolve a web search on this device; nothing
+                                // reasonable to fall back to, so just no-op rather than crash.
+                            }
+                        },
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = FreshBlue)
@@ -118,16 +145,46 @@ fun FoodItemCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         QuantityControls(
                             quantity = item.quantity,
-                            onUpdate = onUpdateQuantity
+                            onUpdate = onUpdateQuantity,
+                            itemName = item.name
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.LightGray)
+                        IconButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete ${item.name}",
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete ${item.name}?") },
+            text = { Text("This removes it from your inventory. This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -148,19 +205,21 @@ fun StatusTag(status: ExpiryStatus) {
 }
 
 @Composable
-fun QuantityControls(quantity: Int, onUpdate: (Int) -> Unit) {
+fun QuantityControls(quantity: Int, onUpdate: (Int) -> Unit, itemName: String) {
     Surface(
         color = BackgroundGray,
         shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(
                 onClick = { onUpdate(-1) },
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clearAndSetSemantics { contentDescription = "Decrease quantity of $itemName" },
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Text("-", fontWeight = FontWeight.Bold, color = Color.Gray)
+                Text("-", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
                 text = quantity.toString(),
@@ -171,10 +230,12 @@ fun QuantityControls(quantity: Int, onUpdate: (Int) -> Unit) {
             )
             TextButton(
                 onClick = { onUpdate(1) },
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clearAndSetSemantics { contentDescription = "Increase quantity of $itemName" },
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Text("+", fontWeight = FontWeight.Bold, color = Color.Gray)
+                Text("+", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -186,7 +247,9 @@ fun getExpiryStatus(days: Long): ExpiryStatus {
     return when {
         days < 0 -> ExpiryStatus("EXPIRED", ExpiryRed, Color.White)
         days == 0L -> ExpiryStatus("EXPIRING TODAY", ExpiryRed, Color.White)
-        days <= 7 -> ExpiryStatus("EXPIRING SOON", WarningYellow, Color.White)
+        // Tinted background + dark foreground, matching the GOOD state's pattern below -
+        // solid WarningYellow with white text was ~1.6:1 contrast, far under the 4.5:1 minimum.
+        days <= 7 -> ExpiryStatus("EXPIRING SOON", WarningYellow.copy(alpha = 0.2f), WarningYellowDark)
         else -> ExpiryStatus("GOOD", GoodGreen.copy(alpha = 0.2f), GoodGreen)
     }
 }
@@ -229,4 +292,3 @@ fun FoodItemCardPreview() {
         )
     }
 }
-
