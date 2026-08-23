@@ -10,6 +10,10 @@ class FoodRepository(private val foodDao: FoodDao) {
         foodDao.insertItem(item)
     }
 
+    suspend fun insertItems(items: List<FoodItem>) {
+        foodDao.insertItems(items)
+    }
+
     suspend fun deleteItem(item: FoodItem) {
         foodDao.deleteItem(item)
     }
@@ -22,7 +26,13 @@ class FoodRepository(private val foodDao: FoodDao) {
         foodDao.insertCategory(category)
     }
 
-    suspend fun deleteCategory(category: Category) {
-        foodDao.deleteCategory(category)
+    suspend fun getCategoryCount(): Int {
+        return foodDao.getCategoryCount()
+    }
+
+    // Deleting a category always reassigns its items first, atomically - there is no plain
+    // "delete category" path here on purpose, so callers can't accidentally orphan items.
+    suspend fun deleteCategoryAndReassign(category: Category, fallback: String = "Uncategorized") {
+        foodDao.deleteCategoryAndReassign(category, fallback)
     }
 }

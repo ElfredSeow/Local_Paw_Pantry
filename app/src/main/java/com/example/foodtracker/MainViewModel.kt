@@ -45,6 +45,11 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         repository.insertItem(item)
     }
 
+    // Bulk add for CSV import (one transaction for the whole batch instead of one per item).
+    fun addItems(items: List<FoodItem>) = viewModelScope.launch {
+        repository.insertItems(items)
+    }
+
     fun deleteItem(item: FoodItem) = viewModelScope.launch {
         repository.deleteItem(item)
     }
@@ -59,9 +64,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun deleteCategory(category: Category) = viewModelScope.launch {
-        repository.deleteCategory(category)
-        // Also update items that were in this category to "Uncategorized"
-        // This logic could be improved by doing it in the repository/dao
+        // Reassigns this category's items to "Uncategorized" and deletes the category in a
+        // single DAO transaction, so items are never left pointing at a deleted category.
+        repository.deleteCategoryAndReassign(category)
     }
 }
 
