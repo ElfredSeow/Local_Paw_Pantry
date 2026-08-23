@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="StudioBotProjectSettings">
-    <option name="shareContext" value="OptedIn" />
-  </component>
-</project>
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
+}
