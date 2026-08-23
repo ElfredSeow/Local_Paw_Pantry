@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # git preserves the exec bit this repo's gradlew is committed with (100755), so this
+      # should be a no-op in practice - kept as a defensive step in case that's ever not true.
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Temurin 21: the JDK the app's own bytecode targets is 11 (see compileOptions /
+      # kotlinOptions in app/build.gradle.kts), but that's the *output* bytecode level, not the
+      # JDK needed to run the build itself. AGP 8.8.0 requires JDK 17+ to run, and this repo's
+      # gradle/gradle-daemon-jvm.properties pins the Gradle daemon to JDK 21 specifically (an
+      # exact-version match, not just a floor) - so the JDK installed here needs to be 21 for
+      # Gradle to find it locally instead of trying to provision one over the network mid-build.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build, unit test, and lint
+        run: ./gradlew assembleDebug testDebugUnitTest lintDebug --stacktrace
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: warn

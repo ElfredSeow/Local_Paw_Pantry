@@ -39,6 +39,23 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        // Room's exported schema JSON (see the `ksp { arg("room.schemaLocation", ...) }` block
+        // below) lands in app/schemas. Exposing that directory as an androidTest asset dir is
+        // what lets a Room MigrationTestHelper-based instrumented test load the historical
+        // per-version schema files.
+        getByName("androidTest") {
+            assets.srcDirs(files("$projectDir/schemas"))
+        }
+    }
+}
+
+// FoodDatabase (see data/FoodDatabase.kt) declares exportSchema = true and a MIGRATION_1_2.
+// Without this, KSP only logs a warning ("Schema export directory was not provided...") and
+// silently writes no schema files, which defeats the point of exportSchema and leaves the
+// migration with nothing to be verified against.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
